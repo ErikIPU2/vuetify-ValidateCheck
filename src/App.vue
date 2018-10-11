@@ -1,7 +1,7 @@
 <template>
 	<v-app :dark="dark">
 	
-		<detect-network v-on:detected-condition="offDet"></detect-network>
+		<detect-network :detected-condition="offDet"></detect-network>
 	
 	
 		<v-toolbar flat v-if="!isLoged">
@@ -11,14 +11,95 @@
 			</v-btn>
 		</v-toolbar>
 	
-		<v-toolbar v-else app>
-			<v-btn icon>
+		<v-toolbar v-else app clipped-left flat>
+			<v-btn class="hidden-md-and-up" icon @click="sidenavShow = !sidenavShow">
 				<v-icon>mdi-menu</v-icon>
 			</v-btn>
 			<v-toolbar-title>ValididateCheck</v-toolbar-title>
 		</v-toolbar>
 	
 		<!-- TOOOLBARS -->
+	
+		<v-navigation-drawer :mini-variant="SideMini && ($vuetify.breakpoint.name !== 'xs' && $vuetify.breakpoint.name !== 'sm')" v-if="isLoged" :permanent="$vuetify.breakpoint.name !== 'xs' && $vuetify.breakpoint.name !== 'sm'" clipped app v-model="sidenavShow">
+	
+			<v-toolbar flat>
+				<v-list class="pa-0">
+					<v-list-tile avatar>
+	
+						<v-list-tile-avatar @click="SideMini = !SideMini">
+							<img :src="user.photoURL">
+						</v-list-tile-avatar>
+	
+						<v-list-tile-content>
+							<v-list-tile-title>{{ user.displayName }}</v-list-tile-title>
+						</v-list-tile-content>
+	
+						<v-list-tile-action>
+							<v-btn icon @click="SideMini = !SideMini" class="hidden-sm-and-down">
+								<v-icon>mdi-menu-left</v-icon>
+							</v-btn>
+						</v-list-tile-action>
+					</v-list-tile>
+				</v-list>
+			</v-toolbar>
+	
+			<v-list class="pa-0" dense>
+	
+				<v-divider></v-divider>
+				<v-subheader>Produtos</v-subheader>
+	
+				<v-list-tile>
+					<v-list-tile-action>
+						<v-btn icon>
+							<v-icon>mdi-plus-circle-outline</v-icon>
+						</v-btn>
+					</v-list-tile-action>
+	
+					<v-list-tile-content>
+						Adicionar Produto
+					</v-list-tile-content>
+				</v-list-tile>
+	
+			</v-list>
+			
+			<v-divider></v-divider>
+
+			<v-subheader>Opções</v-subheader>
+	
+			<v-list class="pa-0" dense>
+	
+	
+				<v-list-tile @click="invert_colors()">
+					<v-list-tile-action>
+						<v-btn icon>
+							<v-icon>mdi-invert-colors</v-icon>
+						</v-btn>
+					</v-list-tile-action>
+	
+					<v-list-tile-content>
+						Modo escuro
+					</v-list-tile-content>
+				</v-list-tile>
+	
+				<v-list-tile @click="logOut()">
+					<v-list-tile-action>
+						<v-btn icon>
+							<v-icon>mdi-logout</v-icon>
+						</v-btn>
+					</v-list-tile-action>
+	
+					<v-list-tile-content>
+						Sair
+					</v-list-tile-content>
+				</v-list-tile>
+	
+	
+			</v-list>
+	
+		</v-navigation-drawer>
+	
+		<!-- Navigation -->
+	
 	
 		<v-content v-if="!isLoged">
 	
@@ -31,7 +112,7 @@
 				</v-layout>
 			</v-container>
 	
-			<v-container v-else-if="!online" fill-height fluid>
+			<v-container v-else-if="false" fill-height fluid>
 				<v-layout align-center justify-center row>
 					<v-flex class="text-xs-center">
 						<v-progress-circular :size="100" indeterminate></v-progress-circular>
@@ -40,7 +121,7 @@
 				</v-layout>
 			</v-container>
 	
-			<v-conteiner v-else fill-height>
+			<v-container v-else fill-height>
 				<v-layout align-center justify-center row>
 					<v-flex xs12 sm10 md8>
 						<v-card>
@@ -87,17 +168,29 @@
 						</v-card>
 					</v-flex>
 				</v-layout>
-			</v-conteiner>
+			</v-container>
 	
 		</v-content>
 	
 		<v-content v-else>
-			<v-btn @click="logOut()">
-				deslogar
-			</v-btn>
+			<!-- <v-btn @click="logOut()">
+								deslogar
+							</v-btn> -->
+	
+			<v-container>
+				<v-layout>
+					<v-flex xs12>
+						<v-btn @click="logOut()">
+							deslogar
+						</v-btn>
+					</v-flex>
+				</v-layout>
+			</v-container>
+	
+	
 		</v-content>
 	
-		<v-footer class="pa-3">
+		<v-footer class="pa-3" app>
 			<div>Erik Borella</div>
 			<v-spacer></v-spacer>
 			<div>&copy; {{ new Date().getFullYear() }}</div>
@@ -114,6 +207,10 @@
 			detectNetwork
 		},
 	
+		firebase: {
+			DBContent: firebase.database().ref("data")
+		},
+	
 		created() {
 			//serve para ver se já existe alguem logado
 			firebase.auth().onAuthStateChanged(user => {
@@ -124,9 +221,13 @@
 					this.isLoged = false;
 				}
 				this.loaded = false;
+	
+				this.$bindAsArray('DBItens', firebase.database().ref("data").child(this.user.uid))
+	
 			});
 	
 		},
+	
 		data() {
 			return {
 				dark: false,
@@ -151,7 +252,11 @@
 				loaded: true,
 				online: "",
 	
-				user: ""
+				user: "",
+				DBItens: [],
+	
+				sidenavShow: true,
+				SideMini: true,
 			}
 		},
 	
@@ -200,10 +305,9 @@
 			},
 	
 			offDet(e) {
+				console.log(e);
 				this.online = e;
 			},
-	
-	
-		}
+		},
 	}
 </script>
